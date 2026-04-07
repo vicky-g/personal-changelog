@@ -1,88 +1,117 @@
 # Personal Changelog
 
-Track what you did day-to-day. Generate summaries for reflection, performance reviews, and career opportunities — powered by Claude.
+A tool for tracking what you do day-to-day and turning it into something useful. Log entries from the CLI or API, then generate AI-powered summaries for reflection, performance reviews, or career development.
 
 ## What it does
 
-- Log entries from the CLI or API
-- Tag and search entries
-- Generate AI summaries across any date range in three modes:
-  - **reflection** — narrative themes and patterns over the period
-  - **perf_review** — impact-focused bullets for self-reviews and promos
-  - **opportunities** — surfaces undersold strengths and framing gaps
+**Log entries** — add dated notes about your work, tagged however you like.
 
-## Stack
+**Search and browse** — full-text search across content and tags, filter by date or tag.
 
-Python 3.11+, FastAPI, PostgreSQL, SQLAlchemy (async), Alembic, Typer, Anthropic SDK
+**Generate summaries** — pick a date range and a mode:
 
-## Project structure
+- `reflection` — narrative summary of themes, patterns, and focus areas over the period
+- `perf_review` — rewrites your entries as impact-focused bullets for self-reviews and promotion docs
+- `opportunities` — analyzes what you're doing vs. how you're framing it; surfaces undersold strengths, framing gaps, and signals about how your role is evolving
 
-```
-app/
-  config.py               # Settings loaded from .env
-  database.py             # Async SQLAlchemy engine and session factory
-  models.py               # Entry and Summary ORM models
-  schemas.py              # Pydantic request/response schemas
-  exceptions.py           # Domain exceptions
-  prompts.py              # LLM prompt templates for all three summary types
-  main.py                 # FastAPI app with routers mounted
-  cli.py                  # Typer CLI (add, today, list, search, edit, delete)
-  api/
-    deps.py               # FastAPI session dependency
-    routes/
-      entries.py          # /entries routes
-      summaries.py        # /summaries routes
-  services/
-    entry_service.py      # Entry CRUD and search
-    summary_service.py    # Summary generation and retrieval
-    llm_client.py         # Anthropic API wrapper
-alembic/
-  env.py                  # Async Alembic migration runner
-  versions/
-    0001_initial.py       # Initial schema migration
-tests/
-  conftest.py             # In-memory SQLite fixtures and HTTP test client
-  test_entry_service.py   # Unit tests for EntryService
-  test_summary_service.py # Unit tests for SummaryService (LLM mocked)
-  test_api_entries.py     # API tests for /entries routes
-  test_api_summaries.py   # API tests for /summaries routes
-```
+---
 
-## Setup
+## Local setup
+
+**Requirements:** Python 3.11+, PostgreSQL
 
 ```bash
-cp .env.example .env
-# fill in DATABASE_URL and ANTHROPIC_API_KEY
+git clone <repo>
+cd personal-changelog
 
+# Install dependencies
 pip install -e ".[dev]"
+
+# Configure environment
+cp .env.example .env
+# Edit .env and set:
+#   DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/personal_changelog
+#   ANTHROPIC_API_KEY=sk-ant-...
+
+# Run migrations
 alembic upgrade head
 ```
 
-## Running
+---
+
+## Running the API
 
 ```bash
-# API
 uvicorn app.main:app --reload
-
-# CLI
-changelog --help
-changelog add "shipped the auth refactor" -t backend -t security
-changelog today
-changelog list --tag backend
-changelog search "auth"
-changelog edit <id> --content "updated content"
-changelog delete <id>
 ```
 
-## Tests
+API available at `http://localhost:8000`. Docs at `http://localhost:8000/docs`.
+
+---
+
+## Running tests
+
+No database or API key required — tests use an in-memory SQLite database and mock the LLM.
 
 ```bash
 pytest
 ```
 
-83 tests, no database or API key required.
+---
 
-## Not yet built
+## CLI
 
-- CLI `summarize` command
-- Auth / multi-user
+```bash
+changelog --help
+```
+
+### Add an entry
+
+```bash
+changelog add "shipped the auth refactor"
+changelog add "led Q1 planning session" -t planning -t leadership
+changelog add "fixed the memory leak in the worker" -t backend --date 2025-03-10
+```
+
+### View today's entries
+
+```bash
+changelog today
+```
+
+### List and filter
+
+```bash
+# All recent entries
+changelog list
+
+# Filter by date
+changelog list --date 2025-03-10
+
+# Filter by one or more tags
+changelog list --tag backend
+changelog list --tag backend --tag security
+```
+
+### Search
+
+```bash
+changelog search "auth"
+changelog search "planning"
+```
+
+### Edit an entry
+
+Entries are editable within 24 hours of creation.
+
+```bash
+changelog edit <id> --content "updated content"
+changelog edit <id> --tag backend --tag infra
+```
+
+### Delete an entry
+
+```bash
+changelog delete <id>
+changelog delete <id> --yes   # skip confirmation
+```
