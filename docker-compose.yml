@@ -15,5 +15,21 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL so the app reaches the db container by service name
+      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/personal_changelog
+    volumes:
+      # Mount source so code changes are live without rebuilding
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
