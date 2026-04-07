@@ -1,3 +1,6 @@
+@entry_id=insert_id_here
+@tag=backend
+
 ### Health check
 GET http://localhost:8000/health
 
@@ -9,8 +12,8 @@ POST http://localhost:8000/entries
 Content-Type: application/json
 
 {
-  "content": "Shipped the auth refactor — moved session tokens to httpOnly cookies",
-  "tags": ["backend", "security"]
+  "content": "bought groceries and went on a walk",
+  "tags": ["self-care"]
 }
 
 
@@ -34,7 +37,7 @@ GET http://localhost:8000/entries?date=2025-03-10
 
 
 ### List entries filtered by a single tag
-GET http://localhost:8000/entries?tag=backend
+GET http://localhost:8000/entries?tag={{tag}}
 
 
 ### List entries filtered by multiple tags (AND logic)
