@@ -1,7 +1,5 @@
 # Personal Changelog
 
-A tool for tracking what you do day-to-day and turning it into something useful. Log entries from the CLI or API, then generate AI-powered summaries for reflection, performance reviews, or career development.
-
 A tool for tracking what you do day-to-day. Then, generates AI-powered summaries for reflection.
 
 ## What it does
