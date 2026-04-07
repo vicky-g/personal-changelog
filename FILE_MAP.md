@@ -13,6 +13,17 @@
 | `pyproject.toml` | Project dependencies, build config, and pytest settings |
 | `.env.example` | Template for required environment variables |
 
+## Docker
+
+| File | Purpose |
+|------|---------|
+| `Dockerfile` | Builds the app image; installs deps as a cached layer |
+| `entrypoint.sh` | Runs migrations then starts uvicorn inside the container |
+| `docker-compose.yml` | Defines `db` (PostgreSQL) and `app` services; wires them together |
+| `.dockerignore` | Excludes `.env`, cache, and compiled files from the image |
+| `start.sh` | Starts all services via `docker compose up --build` |
+| `stop.sh` | Stops all services via `docker compose down` |
+
 ## Domain
 
 | File | Purpose |
@@ -43,6 +54,12 @@
 | File | Purpose |
 |------|---------|
 | `app/cli.py` | Typer commands: `add`, `today`, `list`, `search`, `edit`, `delete` |
+
+## Dev
+
+| File | Purpose |
+|------|---------|
+| `requests.http` | Sample API requests for VS Code REST Client and JetBrains |
 
 ## Tests
 
