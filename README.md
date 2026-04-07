@@ -16,9 +16,12 @@ A tool for tracking what you do day-to-day. Then, generates AI-powered summaries
 
 ---
 
-## Local setup
+## Prerequisites
 
-**Requirements:** Python 3.11+, PostgreSQL
+- Python 3.11+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — includes the Docker CLI and runs the PostgreSQL container
+
+## Local setup
 
 ```bash
 git clone <repo>
@@ -29,23 +32,27 @@ pip install -e ".[dev]"
 
 # Configure environment
 cp .env.example .env
-# Edit .env and set:
-#   DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/personal_changelog
-#   ANTHROPIC_API_KEY=sk-ant-...
-
-# Run migrations
-alembic upgrade head
+# Edit .env and fill in ANTHROPIC_API_KEY
 ```
 
 ---
 
-## Running the API
+## Running the app
+
+`start.sh` starts the database, runs migrations, and starts the server in one command:
 
 ```bash
-uvicorn app.main:app --reload
+./start.sh
 ```
 
 API available at `http://localhost:8000`. Docs at `http://localhost:8000/docs`.
+
+To stop the database:
+
+```bash
+docker compose down        # stop, keep data
+docker compose down -v     # stop and wipe data
+```
 
 ---
 
