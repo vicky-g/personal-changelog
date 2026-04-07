@@ -21,8 +21,8 @@
 | `entrypoint.sh` | Runs migrations then starts uvicorn inside the container |
 | `docker-compose.yml` | Defines `db` (PostgreSQL) and `app` services; wires them together |
 | `.dockerignore` | Excludes `.env`, cache, and compiled files from the image |
-| `start.sh` | Starts all services |
-| `stop.sh` | Stops all services via `docker compose down` |
+| `scripts/start.sh` | Starts all services |
+| `scripts/stop.sh` | Stops all services via `docker compose down` |
 
 ## Domain
 

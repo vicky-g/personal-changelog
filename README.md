@@ -39,18 +39,18 @@ cp .env.example .env
 
 ## Running the app
 
-`start.sh` starts the database, runs migrations, and starts the server in one command:
+`scripts/start.sh` starts the database, runs migrations, and starts the server in one command:
 
 ```bash
-./start.sh
+./scripts/start.sh
 ```
 
 API available at `http://localhost:8000`. Docs at `http://localhost:8000/docs`.
 
-To stop the database:
+To stop:
 
 ```bash
-docker compose down        # stop, keep data
+./scripts/stop.sh          # stop, keep data
 docker compose down -v     # stop and wipe data
 ```
 
