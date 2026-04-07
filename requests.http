@@ -1,0 +1,129 @@
+### Health check
+GET http://localhost:8000/health
+
+
+### ── Entries ──────────────────────────────────────────────────────────────────
+
+### Create an entry
+POST http://localhost:8000/entries
+Content-Type: application/json
+
+{
+  "content": "Shipped the auth refactor — moved session tokens to httpOnly cookies",
+  "tags": ["backend", "security"]
+}
+
+
+### Create an entry with an explicit date
+POST http://localhost:8000/entries
+Content-Type: application/json
+
+{
+  "content": "Led Q1 planning session with the team",
+  "date": "2025-03-10",
+  "tags": ["leadership", "planning"]
+}
+
+
+### List all entries
+GET http://localhost:8000/entries
+
+
+### List entries filtered by date
+GET http://localhost:8000/entries?date=2025-03-10
+
+
+### List entries filtered by a single tag
+GET http://localhost:8000/entries?tag=backend
+
+
+### List entries filtered by multiple tags (AND logic)
+GET http://localhost:8000/entries?tag=backend&tag=security
+
+
+### List entries with pagination
+GET http://localhost:8000/entries?limit=10&offset=0
+
+
+### Search entries
+GET http://localhost:8000/entries/search?q=auth
+
+
+### Get a single entry
+GET http://localhost:8000/entries/{{entry_id}}
+
+
+### Update an entry (within 24 hours of creation)
+PATCH http://localhost:8000/entries/{{entry_id}}
+Content-Type: application/json
+
+{
+  "content": "Shipped the auth refactor — moved session tokens to httpOnly cookies and added refresh token rotation"
+}
+
+
+### Update tags on an entry
+PATCH http://localhost:8000/entries/{{entry_id}}
+Content-Type: application/json
+
+{
+  "tags": ["backend", "security", "auth"]
+}
+
+
+### Delete an entry
+DELETE http://localhost:8000/entries/{{entry_id}}
+
+
+### ── Summaries ─────────────────────────────────────────────────────────────────
+
+### Generate a reflection summary
+POST http://localhost:8000/summaries/generate
+Content-Type: application/json
+
+{
+  "period_type": "weekly",
+  "start_date": "2025-03-10",
+  "end_date": "2025-03-16",
+  "summary_type": "reflection"
+}
+
+
+### Generate a performance review summary
+POST http://localhost:8000/summaries/generate
+Content-Type: application/json
+
+{
+  "period_type": "monthly",
+  "start_date": "2025-03-01",
+  "end_date": "2025-03-31",
+  "summary_type": "perf_review"
+}
+
+
+### Generate an opportunities summary
+POST http://localhost:8000/summaries/generate
+Content-Type: application/json
+
+{
+  "period_type": "quarterly",
+  "start_date": "2025-01-01",
+  "end_date": "2025-03-31",
+  "summary_type": "opportunities"
+}
+
+
+### List all summaries
+GET http://localhost:8000/summaries
+
+
+### List summaries filtered by type
+GET http://localhost:8000/summaries?summary_type=perf_review
+
+
+### List summaries filtered by period
+GET http://localhost:8000/summaries?period_type=weekly
+
+
+### Get a single summary
+GET http://localhost:8000/summaries/{{summary_id}}
