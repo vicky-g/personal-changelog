@@ -5,7 +5,7 @@ from sqlalchemy import cast, or_, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry
+from app.models import Entry, EntryType
 from app.schemas import EntryCreate, EntryUpdate
 
 
@@ -20,6 +20,7 @@ class EntryService:
     async def create(self, data: EntryCreate) -> Entry:
         now = datetime.now(timezone.utc)
         entry = Entry(
+            entry_type=data.entry_type,
             content=data.content,
             date=data.date,
             tags=_normalize_tags(data.tags),
@@ -43,12 +44,15 @@ class EntryService:
     async def list_entries(
         self,
         *,
+        entry_type: EntryType | None = None,
         date: date | None = None,
         tags: list[str] | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> list[Entry]:
         stmt = select(Entry)
+        if entry_type is not None:
+            stmt = stmt.where(Entry.entry_type == entry_type)
         if date is not None:
             stmt = stmt.where(Entry.date == date)
         if tags:
@@ -73,6 +77,8 @@ class EntryService:
             )
         if data.content is not None:
             entry.content = data.content
+        if data.date is not None:
+            entry.date = data.date
         if data.tags is not None:
             entry.tags = _normalize_tags(data.tags)
         entry.updated_at = datetime.now(timezone.utc)
@@ -85,19 +91,37 @@ class EntryService:
         await self.session.delete(entry)
         await self.session.flush()
 
-    async def search(self, query: str) -> list[Entry]:
+    async def search(self, query: str, entry_type: EntryType | None = None) -> list[Entry]:
         q = query.strip()
         if not q:
             return []
-        stmt = (
-            select(Entry)
-            .where(
-                or_(
-                    Entry.content.ilike(f"%{q}%"),
-                    cast(Entry.tags, String).ilike(f"%{q}%"),
-                )
+        stmt = select(Entry).where(
+            or_(
+                Entry.content.ilike(f"%{q}%"),
+                cast(Entry.tags, String).ilike(f"%{q}%"),
             )
-            .order_by(Entry.date.desc(), Entry.created_at.desc())
         )
+        if entry_type is not None:
+            stmt = stmt.where(Entry.entry_type == entry_type)
+        stmt = stmt.order_by(Entry.date.desc(), Entry.created_at.desc())
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def list_tags(
+        self,
+        entry_type: EntryType | None = None,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[str], int]:
+        stmt = select(Entry.tags)
+        if entry_type is not None:
+            stmt = stmt.where(Entry.entry_type == entry_type)
+        result = await self.session.execute(stmt)
+        all_tags: set[str] = set()
+        for row in result.scalars():
+            if isinstance(row, list):
+                all_tags.update(row)
+        sorted_tags = sorted(all_tags)
+        total = len(sorted_tags)
+        return sorted_tags[offset : offset + limit], total

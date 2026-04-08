@@ -4,12 +4,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models import PeriodType, SummaryType
+from app.models import EntryType, PeriodType, SummaryType
 
 
 # ── Entry schemas ──────────────────────────────────────────────────────────────
 
 class EntryCreate(BaseModel):
+    entry_type: EntryType
     content: str = Field(..., min_length=1)
     date: date_type = Field(default_factory=date_type.today)
     tags: list[str] = Field(default_factory=list)
@@ -22,6 +23,7 @@ class EntryCreate(BaseModel):
 
 class EntryUpdate(BaseModel):
     content: str | None = Field(None, min_length=1)
+    date: date_type | None = None
     tags: list[str] | None = None
 
     @field_validator("tags")
@@ -35,6 +37,7 @@ class EntryUpdate(BaseModel):
 class EntryResponse(BaseModel):
     """Full entry response — returned by POST and PATCH."""
     id: uuid.UUID
+    entry_type: EntryType
     content: str
     date: date_type
     tags: list[str]
@@ -48,12 +51,20 @@ class EntryResponse(BaseModel):
 class EntryPublicResponse(BaseModel):
     """Slim entry response — default for GET routes. Excludes internal timestamps."""
     id: uuid.UUID
+    entry_type: EntryType
     content: str
     date: date_type
     tags: list[str]
     is_editable: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Tag schemas ────────────────────────────────────────────────────────────────
+
+class TagsPage(BaseModel):
+    items: list[str]
+    total: int
 
 
 # ── Summary schemas ────────────────────────────────────────────────────────────

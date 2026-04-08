@@ -7,13 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry
+from app.models import Entry, EntryType
 from app.schemas import EntryCreate, EntryPublicResponse, EntryResponse, EntryUpdate
 from app.services.entry_service import EntryService
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
-_DEFAULT_FIELDS = {"id", "content", "date", "tags", "is_editable"}
+_DEFAULT_FIELDS = {"id", "entry_type", "content", "date", "tags", "is_editable"}
 _ALL_FIELDS = _DEFAULT_FIELDS | {"created_at", "updated_at"}
 
 
@@ -43,16 +43,17 @@ async def create_entry(
 
 @router.get("", response_model=list[EntryPublicResponse])
 async def list_entries(
+    entry_type: Optional[EntryType] = Query(None),
     entry_date: Optional[date] = Query(None, alias="date"),
     tag: list[str] = Query(default=[]),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    fields: Optional[str] = Query(None, description="Comma-separated fields to include, e.g. content,date,tags"),
+    fields: Optional[str] = Query(None, description="Comma-separated fields to include"),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     service = EntryService(session)
     entries = await service.list_entries(
-        date=entry_date, tags=tag or None, limit=limit, offset=offset
+        entry_type=entry_type, date=entry_date, tags=tag or None, limit=limit, offset=offset
     )
     requested = _parse_fields(fields)
     return [_serialize(e, requested) for e in entries]
@@ -61,11 +62,12 @@ async def list_entries(
 @router.get("/search", response_model=list[EntryPublicResponse])
 async def search_entries(
     q: str = Query(..., min_length=1),
+    entry_type: Optional[EntryType] = Query(None),
     fields: Optional[str] = Query(None, description="Comma-separated fields to include"),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
     service = EntryService(session)
-    entries = await service.search(q)
+    entries = await service.search(q, entry_type)
     requested = _parse_fields(fields)
     return [_serialize(e, requested) for e in entries]
 
