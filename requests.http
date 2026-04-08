@@ -1,5 +1,6 @@
-@entry_id=insert_id_here
-@tag=backend
+@entry_id=d6a961b3-21c0-43ad-8ae4-ad6b946b2592
+@date=2026-04-07
+@tag=self-care
 
 ### Health check
 GET http://localhost:8000/health
@@ -7,13 +8,25 @@ GET http://localhost:8000/health
 
 ### ── Entries ──────────────────────────────────────────────────────────────────
 
-### Create an entry
+### Create a glow
 POST http://localhost:8000/entries
 Content-Type: application/json
 
 {
-  "content": "bought groceries and went on a walk",
-  "tags": ["self-care"]
+  "entry_type": "glow",
+  "content": "shipped the auth refactor ahead of schedule",
+  "tags": ["backend", "auth"]
+}
+
+
+### Create a grow
+POST http://localhost:8000/entries
+Content-Type: application/json
+
+{
+  "entry_type": "grow",
+  "content": "underestimated the scope of the migration",
+  "tags": ["planning"]
 }
 
 
@@ -22,46 +35,59 @@ POST http://localhost:8000/entries
 Content-Type: application/json
 
 {
-  "content": "Led Q1 planning session with the team",
-  "date": "2025-03-10",
-  "tags": ["leadership", "planning"]
+  "entry_type": "glow",
+  "content": "went to the gym",
+  "date": "2026-03-10",
+  "tags": ["self-care"]
 }
 
 
-### List all entries
+### List all entries (glows and grows)
 GET http://localhost:8000/entries
 
 
+### List only glows
+GET http://localhost:8000/entries?entry_type=glow
+
+
+### List only grows
+GET http://localhost:8000/entries?entry_type=grow
+
+
 ### List entries filtered by date
-GET http://localhost:8000/entries?date=2025-03-10
+GET http://localhost:8000/entries?date=2026-03-10
 
 
-### List entries filtered by a single tag
+### List entries filtered by tag
 GET http://localhost:8000/entries?tag={{tag}}
 
 
 ### List entries filtered by multiple tags (AND logic)
-GET http://localhost:8000/entries?tag=backend&tag=security
+GET http://localhost:8000/entries?tag=backend&tag=auth
 
 
 ### List entries with pagination
 GET http://localhost:8000/entries?limit=10&offset=0
 
 
-### Search entries
+### Search all entries
 GET http://localhost:8000/entries/search?q=auth
 
 
-### Get a single entry (default fields: id, content, date, tags, is_editable)
+### Search only glows
+GET http://localhost:8000/entries/search?q=auth&entry_type=glow
+
+
+### Get a single entry
 GET http://localhost:8000/entries/{{entry_id}}
 
 
-### Get a single entry — content, date, and tags only
+### Get a single entry — content and tags only
 GET http://localhost:8000/entries/{{entry_id}}?fields=content,date,tags
 
 
 ### Get a single entry — include internal timestamps
-GET http://localhost:8000/entries/{{entry_id}}?fields=id,content,date,tags,is_editable,created_at,updated_at
+GET http://localhost:8000/entries/{{entry_id}}?fields=id,entry_type,content,date,tags,is_editable,created_at,updated_at
 
 
 ### Update an entry (within 24 hours of creation)
@@ -69,7 +95,7 @@ PATCH http://localhost:8000/entries/{{entry_id}}
 Content-Type: application/json
 
 {
-  "content": "Shipped the auth refactor — moved session tokens to httpOnly cookies and added refresh token rotation"
+  "content": "created the scaffolding and starter app for the personal-changelog project using claude code"                                    
 }
 
 
@@ -86,6 +112,20 @@ Content-Type: application/json
 DELETE http://localhost:8000/entries/{{entry_id}}
 
 
+### ── Tags ──────────────────────────────────────────────────────────────────────
+
+### List all tags (across glows and grows)
+GET http://localhost:8000/tags
+
+
+### List tags for glows only
+GET http://localhost:8000/tags?entry_type=glow
+
+
+### List tags with pagination
+GET http://localhost:8000/tags?limit=10&offset=0
+
+
 ### ── Summaries ─────────────────────────────────────────────────────────────────
 
 ### Generate a reflection summary
@@ -94,8 +134,8 @@ Content-Type: application/json
 
 {
   "period_type": "weekly",
-  "start_date": "2025-03-10",
-  "end_date": "2025-03-16",
+  "start_date": "2026-03-10",
+  "end_date": "2026-03-16",
   "summary_type": "reflection"
 }
 
@@ -106,8 +146,8 @@ Content-Type: application/json
 
 {
   "period_type": "monthly",
-  "start_date": "2025-03-01",
-  "end_date": "2025-03-31",
+  "start_date": "2026-03-01",
+  "end_date": "2026-03-31",
   "summary_type": "perf_review"
 }
 
@@ -118,8 +158,8 @@ Content-Type: application/json
 
 {
   "period_type": "quarterly",
-  "start_date": "2025-01-01",
-  "end_date": "2025-03-31",
+  "start_date": "2026-01-01",
+  "end_date": "2026-03-31",
   "summary_type": "opportunities"
 }
 

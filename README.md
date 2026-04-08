@@ -4,9 +4,12 @@ A tool for tracking what you do day-to-day. Then, generates AI-powered summaries
 
 ## What it does
 
-**Log entries** — add dated notes about your work, tagged however you like.
+**Log entries** — add dated notes about your work, tagged however you like. Each entry has a type:
 
-**Search and browse** — full-text search across content and tags, filter by date or tag.
+- `glow` — something that went well
+- `grow` — something that could have gone better
+
+**Search and browse** — full-text search across content and tags, filter by date, tag, or entry type.
 
 **Generate summaries** — pick a date range and a mode:
 
@@ -74,16 +77,27 @@ changelog --help
 
 ### Add an entry
 
+`--type` is required. Use `glow` for things that went well, `grow` for things that could have gone better.
+
 ```bash
-changelog add "shipped the auth refactor"
-changelog add "led Q1 planning session" -t planning -t leadership
-changelog add "fixed the memory leak in the worker" -t backend --date 2025-03-10
+changelog add "shipped the auth refactor" --type glow
+changelog add "led Q1 planning session" --type glow -t planning -t leadership
+changelog add "underestimated the migration scope" --type grow -t planning
+changelog add "fixed the memory leak in the worker" --type glow -t backend --date 2025-03-10
 ```
 
-### View today's entries
+### View today's or yesterday's entries
 
 ```bash
+# All entries today
 changelog today
+
+# All entries yesterday
+changelog yesterday
+
+# Only glows or grows
+changelog today --type glow
+changelog yesterday --type grow
 ```
 
 ### List and filter
@@ -92,19 +106,42 @@ changelog today
 # All recent entries
 changelog list
 
+# Filter by type
+changelog list --type glow
+changelog list --type grow
+
 # Filter by date
 changelog list --date 2025-03-10
 
 # Filter by one or more tags
 changelog list --tag backend
 changelog list --tag backend --tag security
+
+# Combine filters
+changelog list --type glow --tag backend
 ```
 
 ### Search
 
 ```bash
+# Search across all entries
 changelog search "auth"
-changelog search "planning"
+
+# Search within a specific type
+changelog search "planning" --type grow
+```
+
+### Browse tags
+
+```bash
+# All unique tags
+changelog tags
+
+# Tags for a specific type
+changelog tags --type glow
+
+# Paginate
+changelog tags --limit 20 --offset 0
 ```
 
 ### Edit an entry
@@ -122,3 +159,34 @@ changelog edit <id> --tag backend --tag infra
 changelog delete <id>
 changelog delete <id> --yes   # skip confirmation
 ```
+
+---
+
+## API
+
+Full interactive docs at `http://localhost:8000/docs`.
+
+### Entries
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/entries` | Create an entry (`entry_type` required in body) |
+| `GET` | `/entries` | List entries (filter by `entry_type`, `date`, `tag`) |
+| `GET` | `/entries/search` | Full-text search (optional `entry_type` filter) |
+| `GET` | `/entries/{id}` | Get a single entry |
+| `PATCH` | `/entries/{id}` | Update content or tags (within 24 hours) |
+| `DELETE` | `/entries/{id}` | Delete an entry |
+
+### Tags
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/tags` | List all unique tags with pagination (optional `entry_type` filter) |
+
+### Summaries
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/summaries/generate` | Generate a summary over a date range |
+| `GET` | `/summaries` | List summaries (filter by `period_type` or `summary_type`) |
+| `GET` | `/summaries/{id}` | Get a single summary |
