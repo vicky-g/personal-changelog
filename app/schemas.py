@@ -33,12 +33,24 @@ class EntryUpdate(BaseModel):
 
 
 class EntryResponse(BaseModel):
+    """Full entry response — returned by POST and PATCH."""
     id: uuid.UUID
     content: str
     date: date_type
     tags: list[str]
     created_at: datetime
     updated_at: datetime
+    is_editable: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EntryPublicResponse(BaseModel):
+    """Slim entry response — default for GET routes. Excludes internal timestamps."""
+    id: uuid.UUID
+    content: str
+    date: date_type
+    tags: list[str]
     is_editable: bool
 
     model_config = ConfigDict(from_attributes=True)

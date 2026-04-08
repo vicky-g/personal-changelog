@@ -7,11 +7,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.schemas import EntryCreate, EntryResponse, EntryUpdate
+from app.models import Entry
+from app.schemas import EntryCreate, EntryPublicResponse, EntryResponse, EntryUpdate
 from app.services.entry_service import EntryService
 
 router = APIRouter(prefix="/entries", tags=["entries"])
 
+_DEFAULT_FIELDS = {"id", "content", "date", "tags", "is_editable"}
+_ALL_FIELDS = _DEFAULT_FIELDS | {"created_at", "updated_at"}
+
+
+def _serialize(entry: Entry, fields: set[str]) -> dict:
+    full = EntryResponse.model_validate(entry).model_dump(mode="json")
+    return {k: v for k, v in full.items() if k in fields}
+
+
+def _parse_fields(fields_param: str | None) -> set[str]:
+    if not fields_param:
+        return _DEFAULT_FIELDS
+    requested = {f.strip() for f in fields_param.split(",")}
+    return requested & _ALL_FIELDS or _DEFAULT_FIELDS
+
+
+# ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=EntryResponse, status_code=status.HTTP_201_CREATED)
 async def create_entry(
@@ -23,42 +41,47 @@ async def create_entry(
     return EntryResponse.model_validate(entry)
 
 
-@router.get("", response_model=list[EntryResponse])
+@router.get("", response_model=list[EntryPublicResponse])
 async def list_entries(
     entry_date: Optional[date] = Query(None, alias="date"),
     tag: list[str] = Query(default=[]),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    fields: Optional[str] = Query(None, description="Comma-separated fields to include, e.g. content,date,tags"),
     session: AsyncSession = Depends(get_session),
-) -> list[EntryResponse]:
+) -> list[dict]:
     service = EntryService(session)
     entries = await service.list_entries(
         date=entry_date, tags=tag or None, limit=limit, offset=offset
     )
-    return [EntryResponse.model_validate(e) for e in entries]
+    requested = _parse_fields(fields)
+    return [_serialize(e, requested) for e in entries]
 
 
-@router.get("/search", response_model=list[EntryResponse])
+@router.get("/search", response_model=list[EntryPublicResponse])
 async def search_entries(
     q: str = Query(..., min_length=1),
+    fields: Optional[str] = Query(None, description="Comma-separated fields to include"),
     session: AsyncSession = Depends(get_session),
-) -> list[EntryResponse]:
+) -> list[dict]:
     service = EntryService(session)
     entries = await service.search(q)
-    return [EntryResponse.model_validate(e) for e in entries]
+    requested = _parse_fields(fields)
+    return [_serialize(e, requested) for e in entries]
 
 
-@router.get("/{entry_id}", response_model=EntryResponse)
+@router.get("/{entry_id}", response_model=EntryPublicResponse)
 async def get_entry(
     entry_id: uuid.UUID,
+    fields: Optional[str] = Query(None, description="Comma-separated fields to include"),
     session: AsyncSession = Depends(get_session),
-) -> EntryResponse:
+) -> dict:
     service = EntryService(session)
     try:
         entry = await service.get(entry_id)
     except EntryNotFound:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entry not found")
-    return EntryResponse.model_validate(entry)
+    return _serialize(entry, _parse_fields(fields))
 
 
 @router.patch("/{entry_id}", response_model=EntryResponse)

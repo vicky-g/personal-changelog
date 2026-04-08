@@ -52,8 +52,16 @@ GET http://localhost:8000/entries?limit=10&offset=0
 GET http://localhost:8000/entries/search?q=auth
 
 
-### Get a single entry
+### Get a single entry (default fields: id, content, date, tags, is_editable)
 GET http://localhost:8000/entries/{{entry_id}}
+
+
+### Get a single entry — content, date, and tags only
+GET http://localhost:8000/entries/{{entry_id}}?fields=content,date,tags
+
+
+### Get a single entry — include internal timestamps
+GET http://localhost:8000/entries/{{entry_id}}?fields=id,content,date,tags,is_editable,created_at,updated_at
 
 
 ### Update an entry (within 24 hours of creation)
