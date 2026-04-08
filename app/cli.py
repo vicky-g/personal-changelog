@@ -4,7 +4,7 @@ Typer CLI — thin wrapper over EntryService. No business logic here.
 
 import asyncio
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, timedelta
 from typing import Optional
 
 import typer
@@ -14,7 +14,7 @@ from rich import box
 
 from app.database import get_session
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry
+from app.models import Entry, EntryType
 from app.schemas import EntryCreate, EntryUpdate
 from app.services.entry_service import EntryService
 
@@ -43,6 +43,7 @@ def _render_entries(entries: list[Entry], title: str = "") -> None:
         show_header=True,
         header_style="bold cyan",
     )
+    table.add_column("Type", style="magenta", width=6)
     table.add_column("Date", style="cyan", no_wrap=True, width=12)
     table.add_column("Content")
     table.add_column("Tags", style="dim", width=20)
@@ -53,6 +54,7 @@ def _render_entries(entries: list[Entry], title: str = "") -> None:
         short_id = str(entry.id)[:8]
         lock = "" if entry.is_editable else " [dim]🔒[/dim]"
         table.add_row(
+            entry.entry_type.value,
             str(entry.date),
             entry.content + lock,
             tags_str,
@@ -67,6 +69,7 @@ def _render_entries(entries: list[Entry], title: str = "") -> None:
 @app.command()
 def add(
     content: str = typer.Argument(..., help="Entry content"),
+    entry_type: EntryType = typer.Option(..., "--type", "-T", help="Entry type: glow or grow"),
     tag: Optional[list[str]] = typer.Option(
         None, "--tag", "-t", help="Tag (repeatable: -t foo -t bar)"
     ),
@@ -85,7 +88,7 @@ def add(
     else:
         parsed_date = date.today()
 
-    data = EntryCreate(content=content, date=parsed_date, tags=tag or [])
+    data = EntryCreate(entry_type=entry_type, content=content, date=parsed_date, tags=tag or [])
 
     async def _create():
         async with get_session() as session:
@@ -93,16 +96,36 @@ def add(
             return await service.create(data)
 
     entry = _run(_create())
-    console.print(f"[green]Added entry[/green] [dim]{str(entry.id)[:8]}[/dim] for {entry.date}")
+    console.print(
+        f"[green]Added {entry.entry_type.value}[/green] [dim]{str(entry.id)[:8]}[/dim] for {entry.date}"
+    )
 
 
 @app.command()
-def today() -> None:
+def yesterday(
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+) -> None:
+    """List all entries for yesterday."""
+    yesterday_date = date.today() - timedelta(days=1)
+
+    async def _list():
+        async with get_session() as session:
+            service = EntryService(session)
+            return await service.list_entries(entry_type=entry_type, date=yesterday_date, limit=100)
+
+    entries = _run(_list())
+    _render_entries(entries, title=f"Entries for {yesterday_date}")
+
+
+@app.command()
+def today(
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+) -> None:
     """List all entries for today."""
     async def _list():
         async with get_session() as session:
             service = EntryService(session)
-            return await service.list_entries(date=date.today(), limit=100)
+            return await service.list_entries(entry_type=entry_type, date=date.today(), limit=100)
 
     entries = _run(_list())
     _render_entries(entries, title=f"Entries for {date.today()}")
@@ -110,6 +133,7 @@ def today() -> None:
 
 @app.command(name="list")
 def list_entries(
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
     entry_date: Optional[str] = typer.Option(
         None, "--date", "-d", help="Filter by date (YYYY-MM-DD)"
     ),
@@ -118,7 +142,7 @@ def list_entries(
     ),
     limit: int = typer.Option(20, "--limit", "-n", help="Max entries to show"),
 ) -> None:
-    """List entries, optionally filtered by date or tag."""
+    """List entries, optionally filtered by type, date, or tag."""
     parsed_date: date | None = None
     if entry_date:
         try:
@@ -130,7 +154,9 @@ def list_entries(
     async def _list():
         async with get_session() as session:
             service = EntryService(session)
-            return await service.list_entries(date=parsed_date, tags=tag or None, limit=limit)
+            return await service.list_entries(
+                entry_type=entry_type, date=parsed_date, tags=tag or None, limit=limit
+            )
 
     entries = _run(_list())
     _render_entries(entries)
@@ -139,12 +165,13 @@ def list_entries(
 @app.command()
 def search(
     query: str = typer.Argument(..., help="Search query"),
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
 ) -> None:
     """Full-text search across entry content and tags."""
     async def _search():
         async with get_session() as session:
             service = EntryService(session)
-            return await service.search(query)
+            return await service.search(query, entry_type)
 
     entries = _run(_search())
     _render_entries(entries, title=f'Results for "{query}"')
@@ -215,6 +242,36 @@ def delete(
     except EntryNotFound:
         console.print(f"[red]Entry '{entry_id}' not found.[/red]")
         raise typer.Exit(1)
+
+
+@app.command(name="tags")
+def list_tags(
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    limit: int = typer.Option(50, "--limit", "-n", help="Max tags to show"),
+    offset: int = typer.Option(0, "--offset", help="Number of tags to skip"),
+) -> None:
+    """List all unique tags."""
+    async def _list():
+        async with get_session() as session:
+            service = EntryService(session)
+            return await service.list_tags(entry_type, limit=limit, offset=offset)
+
+    items, total = _run(_list())
+
+    if not items:
+        console.print("[dim]No tags found.[/dim]")
+        return
+
+    table = Table(
+        box=box.SIMPLE_HEAD,
+        title=f"Tags ({offset + 1}–{offset + len(items)} of {total})",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("Tag", style="cyan")
+    for tag in items:
+        table.add_row(tag)
+    console.print(table)
 
 
 if __name__ == "__main__":
