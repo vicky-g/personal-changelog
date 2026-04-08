@@ -1,7 +1,7 @@
 """
 API tests for /summaries routes.
 
-LLMClient is patched at the class level in summary_service so no real API
+AnthropicLLMClient is patched at the class level in summary_service so no real API
 calls are made. Entry data is seeded via the /entries API.
 """
 
@@ -17,14 +17,14 @@ from httpx import AsyncClient
 
 @contextmanager
 def _mock_llm(response_text: str):
-    """Patch LLMClient.complete for the duration of a with-block."""
-    with patch("app.services.summary_service.LLMClient") as MockCls:
+    """Patch AnthropicLLMClient.complete for the duration of a with-block."""
+    with patch("app.services.summary_service.AnthropicLLMClient") as MockCls:
         MockCls.return_value.complete.return_value = response_text
         yield MockCls
 
 
 async def _seed_entry(client: AsyncClient, content: str, date: str) -> dict:
-    r = await client.post("/entries", json={"content": content, "date": date})
+    r = await client.post("/entries", json={"entry_type": "glow", "content": content, "date": date})
     assert r.status_code == 201
     return r.json()
 

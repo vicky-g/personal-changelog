@@ -25,6 +25,7 @@ from app.prompts import (
     REFLECTION_SYSTEM,
     REFLECTION_USER,
 )
+from app.models import EntryType
 from app.schemas import EntryCreate
 from app.services.entry_service import EntryService
 from app.services.summary_service import SummaryService
@@ -46,7 +47,7 @@ class MockLLMClient:
 
 async def _seed_entry(session, content: str, entry_date: date, tags=None) -> None:
     service = EntryService(session)
-    await service.create(EntryCreate(content=content, date=entry_date, tags=tags or []))
+    await service.create(EntryCreate(entry_type=EntryType.glow, content=content, date=entry_date, tags=tags or []))
 
 
 # ── Prompt template selection ──────────────────────────────────────────────────

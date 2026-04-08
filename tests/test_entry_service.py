@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Entry
+from app.models import Entry, EntryType
 from app.exceptions import EntryNotEditable, EntryNotFound
 from app.schemas import EntryCreate, EntryUpdate
 from app.services.entry_service import EntryService
@@ -27,6 +27,7 @@ def _entry(session: AsyncSession, **kwargs) -> Entry:
     now = datetime.now(timezone.utc)
     defaults = dict(
         id=uuid.uuid4(),
+        entry_type=EntryType.glow,
         content="default content",
         date=date.today(),
         tags=[],
@@ -43,35 +44,35 @@ def _entry(session: AsyncSession, **kwargs) -> Entry:
 
 async def test_tags_lowercased_on_create(session: AsyncSession):
     service = EntryService(session)
-    data = EntryCreate(content="Did the thing", tags=["PYTHON", "FastAPI", "Dev-Ops"])
+    data = EntryCreate(entry_type=EntryType.glow,content="Did the thing", tags=["PYTHON", "FastAPI", "Dev-Ops"])
     entry = await service.create(data)
     assert entry.tags == ["python", "fastapi", "dev-ops"]
 
 
 async def test_tags_whitespace_stripped_on_create(session: AsyncSession):
     service = EntryService(session)
-    data = EntryCreate(content="Shipped it", tags=["  frontend  ", " CSS"])
+    data = EntryCreate(entry_type=EntryType.glow,content="Shipped it", tags=["  frontend  ", " CSS"])
     entry = await service.create(data)
     assert entry.tags == ["frontend", "css"]
 
 
 async def test_empty_tags_filtered_on_create(session: AsyncSession):
     service = EntryService(session)
-    data = EntryCreate(content="Work work", tags=["valid", "  ", ""])
+    data = EntryCreate(entry_type=EntryType.glow,content="Work work", tags=["valid", "  ", ""])
     entry = await service.create(data)
     assert entry.tags == ["valid"]
 
 
 async def test_tags_lowercased_on_update(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="initial", tags=["python"]))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="initial", tags=["python"]))
     updated = await service.update(entry.id, EntryUpdate(tags=["PYTHON", "Go"]))
     assert updated.tags == ["python", "go"]
 
 
 async def test_empty_tags_list_on_create(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="No tags here"))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="No tags here"))
     assert entry.tags == []
 
 
@@ -79,7 +80,7 @@ async def test_empty_tags_list_on_create(session: AsyncSession):
 
 async def test_entry_is_editable_within_24hrs(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="fresh entry"))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="fresh entry"))
     assert entry.is_editable is True
 
 
@@ -102,7 +103,7 @@ async def test_update_raises_when_entry_locked(session: AsyncSession):
 
 async def test_update_succeeds_within_24hrs(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="original"))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="original"))
     updated = await service.update(entry.id, EntryUpdate(content="revised"))
     assert updated.content == "revised"
 
@@ -126,20 +127,20 @@ async def test_entry_just_under_24hr_boundary_is_editable(session: AsyncSession)
 
 async def test_create_sets_date_to_today_by_default(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="daily standup notes"))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="daily standup notes"))
     assert entry.date == date.today()
 
 
 async def test_create_with_explicit_date(session: AsyncSession):
     service = EntryService(session)
     target = date(2025, 3, 15)
-    entry = await service.create(EntryCreate(content="backfill", date=target))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="backfill", date=target))
     assert entry.date == target
 
 
 async def test_get_returns_entry(session: AsyncSession):
     service = EntryService(session)
-    created = await service.create(EntryCreate(content="findable"))
+    created = await service.create(EntryCreate(entry_type=EntryType.glow,content="findable"))
     fetched = await service.get(created.id)
     assert fetched.id == created.id
     assert fetched.content == "findable"
@@ -153,16 +154,16 @@ async def test_get_raises_for_unknown_id(session: AsyncSession):
 
 async def test_list_returns_all_entries(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="entry one"))
-    await service.create(EntryCreate(content="entry two"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="entry one"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="entry two"))
     entries = await service.list_entries()
     assert len(entries) == 2
 
 
 async def test_list_filters_by_date(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="today", date=date.today()))
-    await service.create(EntryCreate(content="yesterday", date=date(2020, 1, 1)))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="today", date=date.today()))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="yesterday", date=date(2020, 1, 1)))
     entries = await service.list_entries(date=date.today())
     assert len(entries) == 1
     assert entries[0].content == "today"
@@ -170,8 +171,8 @@ async def test_list_filters_by_date(session: AsyncSession):
 
 async def test_list_filters_by_tag(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="tagged", tags=["python"]))
-    await service.create(EntryCreate(content="untagged"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="tagged", tags=["python"]))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="untagged"))
     entries = await service.list_entries(tags=["python"])
     assert len(entries) == 1
     assert entries[0].content == "tagged"
@@ -179,9 +180,9 @@ async def test_list_filters_by_tag(session: AsyncSession):
 
 async def test_list_filters_by_multiple_tags(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="both", tags=["python", "backend"]))
-    await service.create(EntryCreate(content="one tag", tags=["python"]))
-    await service.create(EntryCreate(content="neither"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="both", tags=["python", "backend"]))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="one tag", tags=["python"]))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="neither"))
     entries = await service.list_entries(tags=["python", "backend"])
     assert len(entries) == 1
     assert entries[0].content == "both"
@@ -189,7 +190,7 @@ async def test_list_filters_by_multiple_tags(session: AsyncSession):
 
 async def test_delete_removes_entry(session: AsyncSession):
     service = EntryService(session)
-    entry = await service.create(EntryCreate(content="delete me"))
+    entry = await service.create(EntryCreate(entry_type=EntryType.glow,content="delete me"))
     await service.delete(entry.id)
     with pytest.raises(EntryNotFound):
         await service.get(entry.id)
@@ -205,8 +206,8 @@ async def test_delete_raises_for_unknown_id(session: AsyncSession):
 
 async def test_search_matches_content(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="deployed the authentication service"))
-    await service.create(EntryCreate(content="reviewed pull requests"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="deployed the authentication service"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="reviewed pull requests"))
     results = await service.search("authentication")
     assert len(results) == 1
     assert "authentication" in results[0].content
@@ -214,15 +215,15 @@ async def test_search_matches_content(session: AsyncSession):
 
 async def test_search_is_case_insensitive(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="Refactored the Database layer"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="Refactored the Database layer"))
     results = await service.search("database")
     assert len(results) == 1
 
 
 async def test_search_matches_tags(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="some work", tags=["infrastructure"]))
-    await service.create(EntryCreate(content="other work", tags=["frontend"]))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="some work", tags=["infrastructure"]))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="other work", tags=["frontend"]))
     results = await service.search("infrastructure")
     assert len(results) == 1
     assert results[0].tags == ["infrastructure"]
@@ -230,13 +231,13 @@ async def test_search_matches_tags(session: AsyncSession):
 
 async def test_search_empty_query_returns_empty(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="some content"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="some content"))
     results = await service.search("")
     assert results == []
 
 
 async def test_search_no_matches_returns_empty(session: AsyncSession):
     service = EntryService(session)
-    await service.create(EntryCreate(content="completely unrelated"))
+    await service.create(EntryCreate(entry_type=EntryType.glow,content="completely unrelated"))
     results = await service.search("xyzzy_not_found")
     assert results == []

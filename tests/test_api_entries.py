@@ -12,13 +12,13 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Entry
+from app.models import Entry, EntryType
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 async def _create_entry(client: AsyncClient, **kwargs) -> dict:
-    payload = {"content": "default content", **kwargs}
+    payload = {"content": "default content", "entry_type": "glow", **kwargs}
     r = await client.post("/entries", json=payload)
     assert r.status_code == 201, r.text
     return r.json()
@@ -27,12 +27,12 @@ async def _create_entry(client: AsyncClient, **kwargs) -> dict:
 # ── POST /entries ──────────────────────────────────────────────────────────────
 
 async def test_create_entry_returns_201(client: AsyncClient):
-    r = await client.post("/entries", json={"content": "shipped the feature"})
+    r = await client.post("/entries", json={"entry_type": "glow", "content": "shipped the feature"})
     assert r.status_code == 201
 
 
 async def test_create_entry_response_shape(client: AsyncClient):
-    r = await client.post("/entries", json={"content": "wrote tests", "tags": ["testing"]})
+    r = await client.post("/entries", json={"entry_type": "glow", "content": "wrote tests", "tags": ["testing"]})
     body = r.json()
     assert body["content"] == "wrote tests"
     assert body["tags"] == ["testing"]
@@ -42,12 +42,12 @@ async def test_create_entry_response_shape(client: AsyncClient):
 
 
 async def test_create_entry_normalizes_tags(client: AsyncClient):
-    r = await client.post("/entries", json={"content": "x", "tags": ["Python", "  BACKEND  "]})
+    r = await client.post("/entries", json={"entry_type": "glow", "content": "x", "tags": ["Python", "  BACKEND  "]})
     assert r.json()["tags"] == ["python", "backend"]
 
 
 async def test_create_entry_explicit_date(client: AsyncClient):
-    r = await client.post("/entries", json={"content": "backfill", "date": "2025-01-15"})
+    r = await client.post("/entries", json={"entry_type": "glow", "content": "backfill", "date": "2025-01-15"})
     assert r.json()["date"] == "2025-01-15"
 
 
@@ -198,6 +198,7 @@ async def test_update_locked_entry_returns_403(
 ):
     old_time = datetime.now(timezone.utc) - timedelta(hours=25)
     entry = Entry(
+        entry_type=EntryType.glow,
         content="old entry",
         date=date(2025, 1, 1),
         tags=[],
