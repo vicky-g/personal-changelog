@@ -6,10 +6,11 @@
 |------|---------|
 | `app/config.py` | Loads `DATABASE_URL` and `ANTHROPIC_API_KEY` from `.env` |
 | `app/database.py` | Async SQLAlchemy engine, session factory, commit/rollback context manager |
-| `app/main.py` | FastAPI app with entry and summary routers mounted |
+| `app/main.py` | FastAPI app with entries, tags, and summary routers mounted |
 | `alembic.ini` | Alembic configuration |
 | `alembic/env.py` | Async migration runner that reads `DATABASE_URL` from settings |
 | `alembic/versions/0001_initial.py` | Creates `entries`, `summaries`, enum types, and indexes |
+| `alembic/versions/0002_add_entry_type.py` | Adds `entry_type` column (`glow` \| `grow`) to `entries` |
 | `pyproject.toml` | Project dependencies, build config, and pytest settings |
 | `.env.example` | Template for required environment variables |
 
@@ -28,32 +29,33 @@
 
 | File | Purpose |
 |------|---------|
-| `app/models.py` | `Entry` and `Summary` ORM models; `is_editable` is a computed `@property` |
-| `app/schemas.py` | Pydantic schemas for request validation and API response serialization |
-| `app/exceptions.py` | `EntryNotFound`, `EntryNotEditable`, `SummaryNotFound`, `NoEntriesFound` |
+| `app/models.py` | `Entry` (with `EntryType` enum: `glow` \| `grow`), `Summary` ORM models; `is_editable` is a computed `@property` |
+| `app/schemas.py` | Pydantic schemas for request validation and API response serialization; `EntryCreate` requires `entry_type` |
+| `app/exceptions.py` | `AppError` base class with `http_status`; `EntryNotFound`, `EntryNotEditable`, `SummaryNotFound`, `NoEntriesFound` |
 | `app/prompts.py` | System/user prompt pairs for `reflection`, `perf_review`, and `opportunities` |
 
 ## Services
 
 | File | Purpose |
 |------|---------|
-| `app/services/entry_service.py` | Entry CRUD, multi-tag filtering, and full-text search |
-| `app/services/summary_service.py` | Fetches entries for a date range, calls the LLM, saves and returns the result |
-| `app/services/llm_client.py` | Thin wrapper over the Anthropic Messages API |
+| `app/services/entry_service.py` | Entry CRUD, multi-tag filtering, full-text search, and tag listing — all filterable by `entry_type` |
+| `app/services/summary_service.py` | Fetches glows and grows for a date range, calls the LLM, saves and returns the result |
+| `app/services/anthropic_llm_client.py` | Thin wrapper over the Anthropic Messages API |
 
 ## API
 
 | File | Purpose |
 |------|---------|
 | `app/api/deps.py` | FastAPI `get_session` dependency |
-| `app/api/routes/entries.py` | `GET/POST /entries`, `GET/PATCH/DELETE /entries/{id}`, `GET /entries/search` |
+| `app/api/routes/entries.py` | `GET/POST /entries`, `GET/PATCH/DELETE /entries/{id}`, `GET /entries/search`; `entry_type` required on POST, optional filter on GET |
+| `app/api/routes/tags.py` | `GET /tags` — paginated list of unique tags with optional `entry_type` filter |
 | `app/api/routes/summaries.py` | `POST /summaries/generate`, `GET /summaries`, `GET /summaries/{id}` |
 
 ## CLI
 
 | File | Purpose |
 |------|---------|
-| `app/cli.py` | Typer commands: `add`, `today`, `list`, `search`, `edit`, `delete` |
+| `app/cli.py` | Typer commands: `add`, `today`, `yesterday`, `list`, `search`, `edit`, `delete`, `tags`; all support `--type glow\|grow` filter |
 
 ## Dev
 
