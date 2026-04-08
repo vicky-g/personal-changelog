@@ -6,7 +6,7 @@ _DEFAULT_MODEL = "claude-opus-4-6"
 _DEFAULT_MAX_TOKENS = 2048
 
 
-class LLMClient:
+class AnthropicLLMClient:
     """
     Thin wrapper over the Anthropic Messages API.
 

@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import NoEntriesFound, SummaryNotFound
-from app.models import Entry, PeriodType, Summary, SummaryType
+from app.models import Entry, EntryType, PeriodType, Summary, SummaryType
 from app.prompts import (
     OPPORTUNITIES_SYSTEM,
     OPPORTUNITIES_USER,
@@ -14,7 +14,7 @@ from app.prompts import (
     REFLECTION_USER,
 )
 from app.services.entry_service import EntryService
-from app.services.llm_client import LLMClient
+from app.services.anthropic_llm_client import AnthropicLLMClient
 
 
 _PROMPTS: dict[SummaryType, tuple[str, str]] = {
@@ -55,11 +55,15 @@ class SummaryService:
         end_date: date,
         summary_type: SummaryType,
         *,
-        llm_client: LLMClient | None = None,
+        llm_client: AnthropicLLMClient | None = None,
     ) -> Summary:
         entry_service = EntryService(self.session)
-        entries = await entry_service.list_entries(limit=10_000)
-        entries = [e for e in entries if start_date <= e.date <= end_date]
+        glows = await entry_service.list_entries(entry_type=EntryType.glow, limit=10_000)
+        grows = await entry_service.list_entries(entry_type=EntryType.grow, limit=10_000)
+        entries = [
+            e for e in glows + grows
+            if start_date <= e.date <= end_date
+        ]
 
         if not entries:
             raise NoEntriesFound(
@@ -70,7 +74,7 @@ class SummaryService:
         system_prompt, user_template = _PROMPTS[summary_type]
         user_prompt = user_template.format(entries_block=entries_block)
 
-        client = llm_client or LLMClient()
+        client = llm_client or AnthropicLLMClient()
         generated_text = client.complete(system=system_prompt, user=user_prompt)
 
         raw_bullets = _extract_bullets(generated_text)
