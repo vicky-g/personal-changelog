@@ -54,6 +54,7 @@ To stop:
 
 ```bash
 ./scripts/stop.sh          # stop, keep data
+# OR
 docker compose down -v     # stop and wipe data
 ```
 
