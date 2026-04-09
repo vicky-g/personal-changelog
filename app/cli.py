@@ -53,12 +53,14 @@ def _render_entries(entries: list[Entry], title: str = "") -> None:
         tags_str = ", ".join(entry.tags) if entry.tags else ""
         short_id = str(entry.id)[:8]
         lock = "" if entry.is_editable else " [dim]🔒[/dim]"
+        row_style = "on grey23" if entry.entry_type == EntryType.grow else ""
         table.add_row(
             entry.entry_type.value,
             str(entry.date),
             entry.content + lock,
             tags_str,
             short_id,
+            style=row_style,
         )
 
     console.print(table)
