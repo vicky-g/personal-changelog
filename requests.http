@@ -1,4 +1,4 @@
-@entry_id=d6a961b3-21c0-43ad-8ae4-ad6b946b2592
+@entry_id=788bc39b-c43a-4d5a-a349-a5a0ef8daf42
 @date=2026-04-07
 @tag=self-care
 
@@ -104,7 +104,7 @@ PATCH http://localhost:8000/entries/{{entry_id}}
 Content-Type: application/json
 
 {
-  "tags": ["backend", "security", "auth"]
+  "tags": ["self-care"]
 }
 
 
