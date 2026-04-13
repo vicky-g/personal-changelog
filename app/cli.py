@@ -13,10 +13,11 @@ from rich.table import Table
 from rich import box
 
 from app.database import get_session
-from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry, EntryType
-from app.schemas import EntryCreate, EntryUpdate
+from app.exceptions import EntryNotEditable, EntryNotFound, NoEntriesFound, SummaryNotFound
+from app.models import Entry, EntryType, PeriodType, SummaryType
+from app.schemas import EntryCreate, EntryUpdate, SummaryCreate
 from app.services.entry_service import EntryService
+from app.services.summary_service import SummaryService
 
 app = typer.Typer(
     name="changelog",
@@ -340,6 +341,126 @@ def list_tags(
     for tag in items:
         table.add_row(tag)
     console.print(table)
+
+
+@app.command()
+def summarize(
+    period_type: PeriodType = typer.Option(..., "--period", "-p", help="Period: weekly, monthly, quarterly"),
+    summary_type: SummaryType = typer.Option(..., "--type", "-T", help="Type: reflection, perf_review, opportunities"),
+    start_date: str = typer.Option(..., "--start", "-s", help="Start date (YYYY-MM-DD)"),
+    end_date: str = typer.Option(..., "--end", "-e", help="End date (YYYY-MM-DD)"),
+) -> None:
+    """Generate an AI summary for a date range."""
+    try:
+        parsed_start = date.fromisoformat(start_date)
+    except ValueError:
+        console.print(f"[red]Invalid start date '{start_date}'. Use YYYY-MM-DD.[/red]")
+        raise typer.Exit(1)
+    try:
+        parsed_end = date.fromisoformat(end_date)
+    except ValueError:
+        console.print(f"[red]Invalid end date '{end_date}'. Use YYYY-MM-DD.[/red]")
+        raise typer.Exit(1)
+
+    data = SummaryCreate(
+        period_type=period_type,
+        summary_type=summary_type,
+        start_date=parsed_start,
+        end_date=parsed_end,
+    )
+
+    async def _generate():
+        async with get_session() as session:
+            service = SummaryService(session)
+            return await service.generate(
+                period_type=data.period_type,
+                start_date=data.start_date,
+                end_date=data.end_date,
+                summary_type=data.summary_type,
+            )
+
+    try:
+        summary = _run(_generate())
+    except NoEntriesFound as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold cyan]{summary.summary_type.value}[/bold cyan] · {summary.period_type.value} · {summary.start_date} → {summary.end_date}\n")
+    console.print(summary.generated_text or "")
+    console.print(f"\n[dim]Saved as {str(summary.id)[:8]}[/dim]")
+
+
+@app.command(name="summaries")
+def list_summaries(
+    period_type: Optional[PeriodType] = typer.Option(None, "--period", "-p", help="Filter by period type"),
+    summary_type: Optional[SummaryType] = typer.Option(None, "--type", "-T", help="Filter by summary type"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max summaries to show"),
+    offset: int = typer.Option(0, "--offset", help="Number of summaries to skip"),
+) -> None:
+    """List generated summaries."""
+    async def _list():
+        async with get_session() as session:
+            service = SummaryService(session)
+            return await service.list_summaries(
+                period_type=period_type,
+                summary_type=summary_type,
+                limit=limit,
+                offset=offset,
+            )
+
+    items = _run(_list())
+
+    if not items:
+        console.print("[dim]No summaries found.[/dim]")
+        return
+
+    table = Table(
+        box=box.SIMPLE_HEAD,
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("ID", style="dim", width=10)
+    table.add_column("Type", style="magenta", width=14)
+    table.add_column("Period", style="cyan", width=10)
+    table.add_column("Range", width=24)
+    table.add_column("Bullets", justify="right", width=7)
+
+    for s in items:
+        table.add_row(
+            str(s.id)[:8],
+            s.summary_type.value,
+            s.period_type.value,
+            f"{s.start_date} → {s.end_date}",
+            str(len(s.raw_bullets)),
+        )
+
+    console.print(table)
+
+
+@app.command(name="summary")
+def get_summary(
+    summary_id: str = typer.Argument(..., help="Summary ID"),
+) -> None:
+    """Show the full text of a generated summary."""
+    try:
+        sid = uuid.UUID(summary_id)
+    except ValueError:
+        console.print(f"[red]'{summary_id}' is not a valid UUID.[/red]")
+        raise typer.Exit(1)
+
+    async def _get():
+        async with get_session() as session:
+            service = SummaryService(session)
+            return await service.get(sid)
+
+    try:
+        summary = _run(_get())
+    except SummaryNotFound:
+        console.print(f"[red]Summary '{summary_id}' not found.[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"\n[bold cyan]{summary.summary_type.value}[/bold cyan] · {summary.period_type.value} · {summary.start_date} → {summary.end_date}\n")
+    console.print(summary.generated_text or "")
 
 
 if __name__ == "__main__":
