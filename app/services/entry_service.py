@@ -88,6 +88,12 @@ class EntryService:
         await self.session.refresh(entry)
         return entry
 
+    async def append_tags(self, entry_id: uuid.UUID, new_tags: list[str]) -> Entry:
+        entry = await self.get(entry_id)
+        normalized = _normalize_tags(new_tags)
+        merged = list(dict.fromkeys(entry.tags + normalized))
+        return await self.update(entry_id, EntryUpdate(tags=merged))
+
     async def delete(self, entry_id: uuid.UUID) -> None:
         entry = await self.get(entry_id)
         await self.session.delete(entry)

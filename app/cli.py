@@ -243,9 +243,7 @@ def add_tag(
     async def _append():
         async with get_session() as session:
             service = EntryService(session)
-            entry = await service.get(eid)
-            merged = list(dict.fromkeys(entry.tags + [t.strip().lower() for t in tag if t.strip()]))
-            return await service.update(eid, EntryUpdate(tags=merged))
+            return await service.append_tags(eid, tag)
 
     try:
         entry = _run(_append())
