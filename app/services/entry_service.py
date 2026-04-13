@@ -75,6 +75,8 @@ class EntryService:
             raise EntryNotEditable(
                 f"Entry {entry_id} is no longer editable (created more than 24 hours ago)"
             )
+        if data.entry_type is not None:
+            entry.entry_type = data.entry_type
         if data.content is not None:
             entry.content = data.content
         if data.date is not None:

@@ -22,6 +22,7 @@ class EntryCreate(BaseModel):
 
 
 class EntryUpdate(BaseModel):
+    entry_type: EntryType | None = None
     content: str | None = Field(None, min_length=1)
     date: date_type | None = None
     tags: list[str] | None = None

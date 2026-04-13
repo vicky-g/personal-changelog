@@ -32,7 +32,7 @@ def _run(coro):
     return asyncio.run(coro)
 
 
-def _render_entries(entries: list[Entry], title: str = "") -> None:
+def _render_entries(entries: list[Entry], title: str = "", show_id: bool = False) -> None:
     if not entries:
         console.print("[dim]No entries found.[/dim]")
         return
@@ -47,21 +47,17 @@ def _render_entries(entries: list[Entry], title: str = "") -> None:
     table.add_column("Date", style="cyan", no_wrap=True, width=12)
     table.add_column("Content")
     table.add_column("Tags", style="dim", width=20)
-    table.add_column("ID", style="dim", width=10)
+    if show_id:
+        table.add_column("ID", style="dim")
 
     for entry in entries:
         tags_str = ", ".join(entry.tags) if entry.tags else ""
-        short_id = str(entry.id)[:8]
         lock = "" if entry.is_editable else " [dim]🔒[/dim]"
         row_style = "on grey23" if entry.entry_type == EntryType.grow else ""
-        table.add_row(
-            entry.entry_type.value,
-            str(entry.date),
-            entry.content + lock,
-            tags_str,
-            short_id,
-            style=row_style,
-        )
+        row = [entry.entry_type.value, str(entry.date), entry.content + lock, tags_str]
+        if show_id:
+            row.append(str(entry.id))
+        table.add_row(*row, style=row_style)
 
     console.print(table)
 
@@ -106,6 +102,7 @@ def add(
 @app.command()
 def yesterday(
     entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List all entries for yesterday."""
     yesterday_date = date.today() - timedelta(days=1)
@@ -116,12 +113,13 @@ def yesterday(
             return await service.list_entries(entry_type=entry_type, date=yesterday_date, limit=100)
 
     entries = _run(_list())
-    _render_entries(entries, title=f"Entries for {yesterday_date}")
+    _render_entries(entries, title=f"Entries for {yesterday_date}", show_id=show_id)
 
 
 @app.command()
 def today(
     entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List all entries for today."""
     async def _list():
@@ -130,7 +128,7 @@ def today(
             return await service.list_entries(entry_type=entry_type, date=date.today(), limit=100)
 
     entries = _run(_list())
-    _render_entries(entries, title=f"Entries for {date.today()}")
+    _render_entries(entries, title=f"Entries for {date.today()}", show_id=show_id)
 
 
 @app.command(name="list")
@@ -143,6 +141,7 @@ def list_entries(
         None, "--tag", "-t", help="Filter by tag (repeatable: -t foo -t bar)"
     ),
     limit: int = typer.Option(20, "--limit", "-n", help="Max entries to show"),
+    show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List entries, optionally filtered by type, date, or tag."""
     parsed_date: date | None = None
@@ -161,13 +160,14 @@ def list_entries(
             )
 
     entries = _run(_list())
-    _render_entries(entries)
+    _render_entries(entries, show_id=show_id)
 
 
 @app.command()
 def search(
     query: str = typer.Argument(..., help="Search query"),
     entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """Full-text search across entry content and tags."""
     async def _search():
@@ -176,20 +176,24 @@ def search(
             return await service.search(query, entry_type)
 
     entries = _run(_search())
-    _render_entries(entries, title=f'Results for "{query}"')
+    _render_entries(entries, title=f'Results for "{query}"', show_id=show_id)
 
 
 @app.command()
 def edit(
     entry_id: str = typer.Argument(..., help="Entry ID (or unique prefix)"),
+    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Change entry type"),
     content: Optional[str] = typer.Option(None, "--content", "-c", help="New content"),
     tag: Optional[list[str]] = typer.Option(
         None, "--tag", "-t", help="Replace tags (repeatable)"
     ),
+    entry_date: Optional[str] = typer.Option(
+        None, "--date", "-d", help="New date as YYYY-MM-DD"
+    ),
 ) -> None:
     """Edit an existing entry (only within 24 hours of creation)."""
-    if not content and not tag:
-        console.print("[yellow]Nothing to update. Use --content or --tag.[/yellow]")
+    if not entry_type and not content and not tag and not entry_date:
+        console.print("[yellow]Nothing to update. Use --type, --content, --tag, or --date.[/yellow]")
         raise typer.Exit(0)
 
     try:
@@ -198,7 +202,15 @@ def edit(
         console.print(f"[red]'{entry_id}' is not a valid UUID.[/red]")
         raise typer.Exit(1)
 
-    data = EntryUpdate(content=content, tags=tag if tag is not None else None)
+    parsed_date: date | None = None
+    if entry_date:
+        try:
+            parsed_date = date.fromisoformat(entry_date)
+        except ValueError:
+            console.print(f"[red]Invalid date '{entry_date}'. Use YYYY-MM-DD.[/red]")
+            raise typer.Exit(1)
+
+    data = EntryUpdate(entry_type=entry_type, content=content, tags=tag if tag is not None else None, date=parsed_date)
 
     async def _update():
         async with get_session() as session:
@@ -208,6 +220,36 @@ def edit(
     try:
         entry = _run(_update())
         console.print(f"[green]Updated entry[/green] [dim]{str(entry.id)[:8]}[/dim]")
+    except EntryNotFound:
+        console.print(f"[red]Entry '{entry_id}' not found.[/red]")
+        raise typer.Exit(1)
+    except EntryNotEditable:
+        console.print("[red]This entry is locked — it was created more than 24 hours ago.[/red]")
+        raise typer.Exit(1)
+
+
+@app.command(name="add-tag")
+def add_tag(
+    entry_id: str = typer.Argument(..., help="Entry ID"),
+    tag: list[str] = typer.Option(..., "--tag", "-t", help="Tag to append (repeatable: -t foo -t bar)"),
+) -> None:
+    """Append tags to an existing entry without removing current ones."""
+    try:
+        eid = uuid.UUID(entry_id)
+    except ValueError:
+        console.print(f"[red]'{entry_id}' is not a valid UUID.[/red]")
+        raise typer.Exit(1)
+
+    async def _append():
+        async with get_session() as session:
+            service = EntryService(session)
+            entry = await service.get(eid)
+            merged = list(dict.fromkeys(entry.tags + [t.strip().lower() for t in tag if t.strip()]))
+            return await service.update(eid, EntryUpdate(tags=merged))
+
+    try:
+        entry = _run(_append())
+        console.print(f"[green]Updated tags[/green] on [dim]{str(entry.id)[:8]}[/dim]: {', '.join(entry.tags)}")
     except EntryNotFound:
         console.print(f"[red]Entry '{entry_id}' not found.[/red]")
         raise typer.Exit(1)
