@@ -141,6 +141,7 @@ def list_entries(
         None, "--tag", "-t", help="Filter by tag (repeatable: -t foo -t bar)"
     ),
     limit: int = typer.Option(20, "--limit", "-n", help="Max entries to show"),
+    offset: int = typer.Option(0, "--offset", help="Number of entries to skip"),
     show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List entries, optionally filtered by type, date, or tag."""
@@ -156,11 +157,36 @@ def list_entries(
         async with get_session() as session:
             service = EntryService(session)
             return await service.list_entries(
-                entry_type=entry_type, date=parsed_date, tags=tag or None, limit=limit
+                entry_type=entry_type, date=parsed_date, tags=tag or None, limit=limit, offset=offset
             )
 
     entries = _run(_list())
     _render_entries(entries, show_id=show_id)
+
+
+@app.command()
+def get(
+    entry_id: str = typer.Argument(..., help="Entry ID"),
+    show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
+) -> None:
+    """Fetch a single entry by ID."""
+    try:
+        eid = uuid.UUID(entry_id)
+    except ValueError:
+        console.print(f"[red]'{entry_id}' is not a valid UUID.[/red]")
+        raise typer.Exit(1)
+
+    async def _get():
+        async with get_session() as session:
+            service = EntryService(session)
+            return await service.get(eid)
+
+    try:
+        entry = _run(_get())
+        _render_entries([entry], show_id=show_id)
+    except EntryNotFound:
+        console.print(f"[red]Entry '{entry_id}' not found.[/red]")
+        raise typer.Exit(1)
 
 
 @app.command()
