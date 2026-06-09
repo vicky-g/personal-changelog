@@ -21,15 +21,15 @@ class AnthropicLLMClient:
         model: str = _DEFAULT_MODEL,
         max_tokens: int = _DEFAULT_MAX_TOKENS,
     ) -> None:
-        self._client = anthropic.Anthropic(api_key=api_key or settings.anthropic_api_key)
+        self._client = anthropic.AsyncAnthropic(api_key=api_key or settings.anthropic_api_key)
         self.model = model
         self.max_tokens = max_tokens
 
-    def complete(self, *, system: str, user: str) -> str:
-        message = self._client.messages.create(
+    async def complete(self, *, system: str, user: str) -> str:
+        message = await self._client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
-            system=system,
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user}],
         )
         return message.content[0].text

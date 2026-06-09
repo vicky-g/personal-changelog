@@ -7,7 +7,7 @@ calls are made. Entry data is seeded via the /entries API.
 
 import uuid
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -19,7 +19,7 @@ from httpx import AsyncClient
 def _mock_llm(response_text: str):
     """Patch AnthropicLLMClient.complete for the duration of a with-block."""
     with patch("app.services.summary_service.AnthropicLLMClient") as MockCls:
-        MockCls.return_value.complete.return_value = response_text
+        MockCls.return_value.complete = AsyncMock(return_value=response_text)
         yield MockCls
 
 
