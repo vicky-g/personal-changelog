@@ -2,15 +2,10 @@ import enum
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import Date, DateTime, Enum as SQLEnum, JSON, Text
+from sqlalchemy import Date, DateTime, Enum as SQLEnum, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-
-
-class EntryType(str, enum.Enum):
-    glow = "glow"
-    grow = "grow"
 
 
 class PeriodType(str, enum.Enum):
@@ -29,7 +24,7 @@ class Entry(Base):
     __tablename__ = "entries"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    entry_type: Mapped[EntryType] = mapped_column(SQLEnum(EntryType), nullable=False)
+    entry_type: Mapped[str] = mapped_column(String, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)

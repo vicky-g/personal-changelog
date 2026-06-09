@@ -1,16 +1,18 @@
 import uuid
 from datetime import date as date_type
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models import EntryType, PeriodType, SummaryType
+from app.models import PeriodType, SummaryType
 
+EntryTypeValue = Literal["glow", "grow"]
 
 # ── Entry schemas ──────────────────────────────────────────────────────────────
 
 class EntryCreate(BaseModel):
-    entry_type: EntryType
+    entry_type: EntryTypeValue
     content: str = Field(..., min_length=1)
     date: date_type = Field(default_factory=date_type.today)
     tags: list[str] = Field(default_factory=list)
@@ -22,7 +24,7 @@ class EntryCreate(BaseModel):
 
 
 class EntryUpdate(BaseModel):
-    entry_type: EntryType | None = None
+    entry_type: EntryTypeValue | None = None
     content: str | None = Field(None, min_length=1)
     date: date_type | None = None
     tags: list[str] | None = None
@@ -38,7 +40,7 @@ class EntryUpdate(BaseModel):
 class EntryResponse(BaseModel):
     """Full entry response — returned by POST and PATCH."""
     id: uuid.UUID
-    entry_type: EntryType
+    entry_type: str
     content: str
     date: date_type
     tags: list[str]
@@ -52,7 +54,7 @@ class EntryResponse(BaseModel):
 class EntryPublicResponse(BaseModel):
     """Slim entry response — default for GET routes. Excludes internal timestamps."""
     id: uuid.UUID
-    entry_type: EntryType
+    entry_type: str
     content: str
     date: date_type
     tags: list[str]

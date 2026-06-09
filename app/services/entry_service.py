@@ -5,7 +5,7 @@ from sqlalchemy import cast, or_, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry, EntryType
+from app.models import Entry
 from app.schemas import EntryCreate, EntryUpdate
 
 
@@ -44,7 +44,7 @@ class EntryService:
     async def list_entries(
         self,
         *,
-        entry_type: EntryType | None = None,
+        entry_type: str | None = None,
         date: date | None = None,
         tags: list[str] | None = None,
         limit: int = 50,
@@ -99,7 +99,7 @@ class EntryService:
         await self.session.delete(entry)
         await self.session.flush()
 
-    async def search(self, query: str, entry_type: EntryType | None = None) -> list[Entry]:
+    async def search(self, query: str, entry_type: str | None = None) -> list[Entry]:
         q = query.strip()
         if not q:
             return []
@@ -117,7 +117,7 @@ class EntryService:
 
     async def list_tags(
         self,
-        entry_type: EntryType | None = None,
+        entry_type: str | None = None,
         *,
         limit: int = 50,
         offset: int = 0,

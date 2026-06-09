@@ -14,7 +14,7 @@ from rich import box
 
 from app.database import get_session
 from app.exceptions import EntryNotEditable, EntryNotFound, NoEntriesFound, SummaryNotFound
-from app.models import Entry, EntryType, PeriodType, SummaryType
+from app.models import Entry, PeriodType, SummaryType
 from app.schemas import EntryCreate, EntryUpdate, SummaryCreate
 from app.services.entry_service import EntryService
 from app.services.summary_service import SummaryService
@@ -54,8 +54,8 @@ def _render_entries(entries: list[Entry], title: str = "", show_id: bool = False
     for entry in entries:
         tags_str = ", ".join(entry.tags) if entry.tags else ""
         lock = "" if entry.is_editable else " [dim]🔒[/dim]"
-        row_style = "on grey23" if entry.entry_type == EntryType.grow else ""
-        row = [entry.entry_type.value, str(entry.date), entry.content + lock, tags_str]
+        row_style = "on grey23" if entry.entry_type == "grow" else ""
+        row = [entry.entry_type, str(entry.date), entry.content + lock, tags_str]
         if show_id:
             row.append(str(entry.id))
         table.add_row(*row, style=row_style)
@@ -68,7 +68,7 @@ def _render_entries(entries: list[Entry], title: str = "", show_id: bool = False
 @app.command()
 def add(
     content: str = typer.Argument(..., help="Entry content"),
-    entry_type: EntryType = typer.Option(..., "--type", "-T", help="Entry type: glow or grow"),
+    entry_type: str = typer.Option(..., "--type", "-T", help="Entry type: glow or grow"),
     tag: Optional[list[str]] = typer.Option(
         None, "--tag", "-t", help="Tag (repeatable: -t foo -t bar)"
     ),
@@ -96,13 +96,13 @@ def add(
 
     entry = _run(_create())
     console.print(
-        f"[green]Added {entry.entry_type.value}[/green] [dim]{str(entry.id)[:8]}[/dim] for {entry.date}"
+        f"[green]Added {entry.entry_type}[/green] [dim]{str(entry.id)[:8]}[/dim] for {entry.date}"
     )
 
 
 @app.command()
 def yesterday(
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Filter by type"),
     show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List all entries for yesterday."""
@@ -119,7 +119,7 @@ def yesterday(
 
 @app.command()
 def today(
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Filter by type"),
     show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """List all entries for today."""
@@ -134,7 +134,7 @@ def today(
 
 @app.command(name="list")
 def list_entries(
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Filter by type"),
     entry_date: Optional[str] = typer.Option(
         None, "--date", "-d", help="Filter by date (YYYY-MM-DD)"
     ),
@@ -193,7 +193,7 @@ def get(
 @app.command()
 def search(
     query: str = typer.Argument(..., help="Search query"),
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Filter by type"),
     show_id: bool = typer.Option(False, "--id", help="Show full entry ID"),
 ) -> None:
     """Full-text search across entry content and tags."""
@@ -209,7 +209,7 @@ def search(
 @app.command()
 def edit(
     entry_id: str = typer.Argument(..., help="Entry ID (or unique prefix)"),
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Change entry type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Change entry type"),
     content: Optional[str] = typer.Option(None, "--content", "-c", help="New content"),
     tag: Optional[list[str]] = typer.Option(
         None, "--tag", "-t", help="Replace tags (repeatable)"
@@ -315,7 +315,7 @@ def delete(
 
 @app.command(name="tags")
 def list_tags(
-    entry_type: Optional[EntryType] = typer.Option(None, "--type", "-T", help="Filter by type"),
+    entry_type: Optional[str] = typer.Option(None, "--type", "-T", help="Filter by type"),
     limit: int = typer.Option(50, "--limit", "-n", help="Max tags to show"),
     offset: int = typer.Option(0, "--offset", help="Number of tags to skip"),
 ) -> None:

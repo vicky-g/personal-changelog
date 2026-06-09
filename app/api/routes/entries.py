@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session
 from app.exceptions import EntryNotEditable, EntryNotFound
-from app.models import Entry, EntryType
+from app.models import Entry
 from app.schemas import EntryCreate, EntryPublicResponse, EntryResponse, EntryUpdate
 from app.services.entry_service import EntryService
 
@@ -43,7 +43,7 @@ async def create_entry(
 
 @router.get("", response_model=list[EntryPublicResponse])
 async def list_entries(
-    entry_type: Optional[EntryType] = Query(None),
+    entry_type: Optional[str] = Query(None),
     entry_date: Optional[date] = Query(None, alias="date"),
     tag: list[str] = Query(default=[]),
     limit: int = Query(50, ge=1, le=500),
@@ -62,7 +62,7 @@ async def list_entries(
 @router.get("/search", response_model=list[EntryPublicResponse])
 async def search_entries(
     q: str = Query(..., min_length=1),
-    entry_type: Optional[EntryType] = Query(None),
+    entry_type: Optional[str] = Query(None),
     fields: Optional[str] = Query(None, description="Comma-separated fields to include"),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:

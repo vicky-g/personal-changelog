@@ -12,7 +12,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Entry, EntryType
+from app.models import Entry
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ async def test_update_locked_entry_returns_403(
 ):
     old_time = datetime.now(timezone.utc) - timedelta(hours=25)
     entry = Entry(
-        entry_type=EntryType.glow,
+        entry_type="glow",
         content="old entry",
         date=date(2025, 1, 1),
         tags=[],

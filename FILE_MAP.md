@@ -10,7 +10,7 @@
 | `alembic.ini` | Alembic configuration |
 | `alembic/env.py` | Async migration runner that reads `DATABASE_URL` from settings |
 | `alembic/versions/0001_initial.py` | Creates `entries`, `summaries`, enum types, and indexes |
-| `alembic/versions/0002_add_entry_type.py` | Adds `entry_type` column (`glow` \| `grow`) to `entries` |
+| `alembic/versions/0002_add_entry_type.py` | Adds `entry_type` string column to `entries` |
 | `pyproject.toml` | Project dependencies, build config, and pytest settings |
 | `.env.example` | Template for required environment variables |
 
@@ -29,8 +29,8 @@
 
 | File | Purpose |
 |------|---------|
-| `app/models.py` | `Entry` (with `EntryType` enum: `glow` \| `grow`), `Summary` ORM models; `is_editable` is a computed `@property` |
-| `app/schemas.py` | Pydantic schemas for request validation and API response serialization; `EntryCreate` requires `entry_type` |
+| `app/models.py` | `Entry` (`entry_type` is a plain `String` column: `glow` \| `grow`), `Summary` ORM models; `is_editable` is a computed `@property` |
+| `app/schemas.py` | Pydantic schemas for request validation and API response serialization; `EntryCreate.entry_type` validated as `Literal["glow", "grow"]` |
 | `app/exceptions.py` | `AppError` base class with `http_status`; `EntryNotFound`, `EntryNotEditable`, `SummaryNotFound`, `NoEntriesFound` |
 | `app/prompts.py` | System/user prompt pairs for `reflection`, `perf_review`, and `opportunities` |
 
